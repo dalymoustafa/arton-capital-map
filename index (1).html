@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Arton Capital — Office Locations</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Libre+Baskerville&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #fff; font-family: 'Libre Baskerville', serif; }
+    .imi-map-widget { width: 100%; max-width: 960px; margin: 0 auto; border: 1px solid #e4e4e4; overflow: hidden; }
+    #imi-map { width: 100%; height: 380px; background: #ffffff; }
+    .leaflet-control-attribution { display: none !important; }
+    .leaflet-popup-content-wrapper { border-radius: 0 !important; border: 1px solid #e4e4e4 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
+    .leaflet-popup-content { margin: 12px 16px !important; }
+    .popup-city { font-family: 'Roboto Condensed', sans-serif; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #111; margin-bottom: 4px; }
+    .popup-addr { font-family: 'Libre Baskerville', serif; font-size: 11px; color: #777; line-height: 1.5; }
+    .popup-hq { font-family: 'Roboto Condensed', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c71e1d; display: block; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+<div class="imi-map-widget">
+  <div id="imi-map"></div>
+</div>
+<script>
+  // No API keys here — offices.json is generated securely by GitHub Actions
+  fetch("offices.json?t=" + Date.now())
+    .then(r => r.json())
+    .then(offices => {
+      const map = L.map("imi-map", { zoomControl: true, attributionControl: false });
+
+      function makeIcon(isHq) {
+        const fill = isHq ? "#c71e1d" : "#1d81a2";
+        const size = isHq ? 20 : 13;
+        return L.divIcon({
+          className: "",
+          html: `<svg width="${size}" height="${size}" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                   <rect x="2" y="2" width="16" height="16" rx="1" transform="rotate(45 10 10)"
+                     fill="${fill}" fill-opacity="0.85" stroke="rgba(0,0,0,0.5)" stroke-width="1.2"/>
+                 </svg>`,
+          iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -(size/2+4)]
+        });
+      }
+
+      fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
+        .then(r => r.json())
+        .then(geojson => {
+          L.geoJSON(geojson, {
+            style: { fillColor: "#ededed", fillOpacity: 1, color: "#cccccc", weight: 0.5 }
+          }).addTo(map);
+          offices.forEach(o => {
+            L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) }).addTo(map)
+              .bindPopup(`${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}
+                <div class="popup-city">${o.city}</div>
+                <div class="popup-addr">${o.address}</div>`);
+          });
+          map.fitBounds(offices.map(o => [o.lat, o.lng]), { padding: [60, 60], maxZoom: 8 });
+        });
+      map.setView([30, 20], 2);
+    })
+    .catch(() => {
+      document.getElementById("imi-map").innerHTML =
+        '<p style="text-align:center;padding:40px;color:#999;">Map data could not be loaded.</p>';
+    });
+</script>
+</body>
+</html>
