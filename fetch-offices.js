@@ -31,7 +31,6 @@ function geocode(query) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// Extract just "City, Country" from a full address — last 2 parts after splitting by comma
 function extractCityCountry(address) {
   const parts = address.split(",").map(p => p.trim()).filter(Boolean);
   if (parts.length >= 2) return parts.slice(-2).join(", ");
@@ -71,11 +70,17 @@ async function main() {
     process.exit(1);
   }
 
-  const rawLocations = artonRecord.fields["Office Location(s)"];
+  console.log("Found Arton Capital! Fields:", JSON.stringify(Object.keys(artonRecord.fields)));
+
+  // Try both possible field names
+  const rawLocations = artonRecord.fields["Office Locations"] || artonRecord.fields["Office Location(s)"];
+  
   if (!rawLocations) {
-    console.error("Office Location(s) field is empty!");
+    console.error("Could not find office locations field! Available fields:", JSON.stringify(Object.keys(artonRecord.fields)));
     process.exit(1);
   }
+
+  console.log("Raw locations data:", rawLocations);
 
   const addresses = rawLocations.split("\n").map(a => a.trim()).filter(Boolean);
   console.log(`Found ${addresses.length} addresses`);
@@ -86,15 +91,13 @@ async function main() {
     const isHq = rawAddress.toUpperCase().startsWith("HQ");
     const cleanAddress = rawAddress.replace(/^HQ\s*/i, "").trim();
     const city = extractCity(cleanAddress);
-    
-    // Only send "City, Country" to geocoder — simple and reliable for ANY city in the world
     const cityCountry = extractCityCountry(cleanAddress);
-    
+
     console.log(`Geocoding: ${cityCountry}`);
     await sleep(1100);
-    
+
     const coords = await geocode(cityCountry);
-    
+
     if (!coords) {
       console.warn(`Could not geocode: ${cityCountry}`);
       continue;
@@ -104,7 +107,6 @@ async function main() {
     console.log(`  ✓ ${city}: ${coords.lat}, ${coords.lng}`);
   }
 
-  // Bake everything into index.html
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,7 +156,11 @@ async function main() {
         L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) }).addTo(map)
           .bindPopup(\`\${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}<div class="popup-city">\${o.city}</div><div class="popup-addr">\${o.address}</div>\`);
       });
-      map.fitBounds(OFFICES.map(o => [o.lat, o.lng]), { padding: [60, 60], maxZoom: 8 });
+      if (OFFICES.length > 0) {
+        map.fitBounds(OFFICES.map(o => [o.lat, o.lng]), { padding: [60, 60], maxZoom: 8 });
+      } else {
+        map.setView([30, 20], 2);
+      }
     });
   map.setView([30, 20], 2);
 <\/script>
@@ -162,7 +168,7 @@ async function main() {
 </html>`;
 
   fs.writeFileSync("index.html", html);
-  console.log(`\nDone! Wrote index.html with ${offices.length} offices.`);
+  console.log(`Done! Wrote index.html with ${offices.length} offices.`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
