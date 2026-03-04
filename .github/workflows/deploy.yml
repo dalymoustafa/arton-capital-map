@@ -1,0 +1,42 @@
+name: Fetch from Airtable & Deploy Map
+
+on:
+  # Runs every day at 6am UTC (catches any manual Airtable edits)
+  schedule:
+    - cron: "0 6 * * *"
+  # Runs immediately when Airtable sends a webhook trigger
+  repository_dispatch:
+    types: [airtable-update]
+  # Also runs whenever you push changes to GitHub manually
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Fetch offices from Airtable
+        env:
+          AIRTABLE_API_KEY: ${{ secrets.AIRTABLE_API_KEY }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE_ID: ${{ secrets.AIRTABLE_TABLE_ID }}
+        run: node fetch-offices.js
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          publish_branch: gh-pages
