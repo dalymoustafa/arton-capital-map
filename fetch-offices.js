@@ -1,5 +1,5 @@
 // This script runs inside GitHub Actions (NOT in public)
-// It fetches from Airtable using a secret API key and saves offices.json
+// It fetches Arton Capital's offices from Airtable and saves offices.json
 const https = require("https");
 const fs = require("fs");
 
@@ -43,7 +43,7 @@ function extractCity(address) {
 }
 
 async function main() {
-  // Fetch records from Airtable
+  // Fetch all records from Airtable
   const url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`;
   const records = await new Promise((resolve, reject) => {
     const req = https.get(url, {
@@ -61,18 +61,38 @@ async function main() {
 
   console.log(`Found ${records.length} records in Airtable`);
 
+  // Find the Arton Capital row
+  const artonRecord = records.find(r => 
+    r.fields["Name"] && r.fields["Name"].toLowerCase().includes("arton capital")
+  );
+
+  if (!artonRecord) {
+    console.error("Could not find Arton Capital in the table!");
+    process.exit(1);
+  }
+
+  console.log("Found Arton Capital record!");
+
+  // Get the office locations field
+  const rawLocations = artonRecord.fields["Office Location(s)"];
+  if (!rawLocations) {
+    console.error("Office Location(s) field is empty for Arton Capital!");
+    process.exit(1);
+  }
+
+  // Split by new line to get individual addresses
+  const addresses = rawLocations.split("\n").map(a => a.trim()).filter(Boolean);
+  console.log(`Found ${addresses.length} office addresses`);
+
   const offices = [];
 
-  for (const record of records) {
-    const rawAddress = record.fields["Offices"];
-    if (!rawAddress) continue;
-
-    const isHq = rawAddress.toUpperCase().includes("HQ");
-    const cleanAddress = rawAddress.replace(/\bHQ\b/gi, "").replace(/^[\s,:\-]+/, "").trim();
+  for (const rawAddress of addresses) {
+    const isHq = rawAddress.toUpperCase().startsWith("HQ");
+    const cleanAddress = rawAddress.replace(/^HQ\s*/i, "").trim();
     const city = extractCity(cleanAddress);
 
     console.log(`Geocoding: ${city}...`);
-    await sleep(1100); // Respect Nominatim rate limit
+    await sleep(1100); // Respect Nominatim rate limit (1 request/second)
 
     const coords = await geocode(cleanAddress);
     if (!coords) {

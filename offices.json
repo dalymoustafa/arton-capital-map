@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "city": "Budapest 1065",
+    "address": "Hajós utca 25, Budapest 1065, Hungary",
+    "lat": 47.5041679,
+    "lng": 19.0573568,
+    "hq": false
+  },
+  {
+    "city": "1050 Brussels",
+    "address": "2 Place du Luxembourg, 1050 Brussels, Belgium",
+    "lat": 50.83884,
+    "lng": 4.3724903,
+    "hq": false
+  },
+  {
+    "city": "Roseau",
+    "address": "7 Great George Street, Roseau, Dominica",
+    "lat": 15.2991583,
+    "lng": -61.3875479,
+    "hq": false
+  }
+]
