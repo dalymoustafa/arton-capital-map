@@ -1,6 +1,3 @@
-Fetch offices · JS
-Copy
-
 const https = require("https");
 const fs = require("fs");
 
