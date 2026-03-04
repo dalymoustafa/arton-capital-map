@@ -1,5 +1,3 @@
-// This script runs inside GitHub Actions (NOT in public)
-// It fetches Arton Capital's offices from Airtable and saves offices.json
 const https = require("https");
 const fs = require("fs");
 
@@ -12,7 +10,6 @@ if (!BASE_ID || !TABLE_ID || !API_KEY) {
   process.exit(1);
 }
 
-// Geocode an address using free Nominatim API
 function geocode(address) {
   return new Promise((resolve) => {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
@@ -24,9 +21,7 @@ function geocode(address) {
           const parsed = JSON.parse(data);
           if (parsed.length > 0) {
             resolve({ lat: parseFloat(parsed[0].lat), lng: parseFloat(parsed[0].lon) });
-          } else {
-            resolve(null);
-          }
+          } else { resolve(null); }
         } catch { resolve(null); }
       });
     });
@@ -36,6 +31,27 @@ function geocode(address) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// Strip building/floor/suite details, keep street + city + country
+function simplifyAddress(address) {
+  // Remove floor, suite, level, tower references
+  let simple = address
+    .replace(/floor\s*\d+[,]?\s*/gi, "")
+    .replace(/level\s*\d+[,]?\s*/gi, "")
+    .replace(/suite\s*[\w\d]+[,]?\s*/gi, "")
+    .replace(/tower\s*[\w\d]+[,]?\s*/gi, "")
+    .replace(/\d+(st|nd|rd|th)\s*floor[,]?\s*/gi, "")
+    .replace(/no\.?\s*\d+[,]?\s*/gi, "")
+    .replace(/^[,\s]+/, "")
+    .trim();
+  
+  // Take just the last 2-3 parts (city, country) for geocoding
+  const parts = simple.split(",").map(p => p.trim()).filter(Boolean);
+  if (parts.length > 3) {
+    return parts.slice(-3).join(", ");
+  }
+  return simple;
+}
+
 function extractCity(address) {
   const parts = address.split(",").map(p => p.trim()).filter(Boolean);
   if (parts.length >= 2) return parts[parts.length - 2];
@@ -43,7 +59,6 @@ function extractCity(address) {
 }
 
 async function main() {
-  // Fetch all records from Airtable
   const url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`;
   const records = await new Promise((resolve, reject) => {
     const req = https.get(url, {
@@ -61,8 +76,7 @@ async function main() {
 
   console.log(`Found ${records.length} records in Airtable`);
 
-  // Find the Arton Capital row
-  const artonRecord = records.find(r => 
+  const artonRecord = records.find(r =>
     r.fields["Name"] && r.fields["Name"].toLowerCase().includes("arton capital")
   );
 
@@ -71,16 +85,12 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("Found Arton Capital record!");
-
-  // Get the office locations field
   const rawLocations = artonRecord.fields["Office Location(s)"];
   if (!rawLocations) {
-    console.error("Office Location(s) field is empty for Arton Capital!");
+    console.error("Office Location(s) field is empty!");
     process.exit(1);
   }
 
-  // Split by new line to get individual addresses
   const addresses = rawLocations.split("\n").map(a => a.trim()).filter(Boolean);
   console.log(`Found ${addresses.length} office addresses`);
 
@@ -90,13 +100,22 @@ async function main() {
     const isHq = rawAddress.toUpperCase().startsWith("HQ");
     const cleanAddress = rawAddress.replace(/^HQ\s*/i, "").trim();
     const city = extractCity(cleanAddress);
+    const simpleAddress = simplifyAddress(cleanAddress);
 
-    console.log(`Geocoding: ${city}...`);
-    await sleep(1100); // Respect Nominatim rate limit (1 request/second)
+    console.log(`Geocoding ${city} using: "${simpleAddress}"`);
+    await sleep(1100);
 
-    const coords = await geocode(cleanAddress);
+    let coords = await geocode(simpleAddress);
+    
+    // If that fails, try just the city name
     if (!coords) {
-      console.warn(`Could not geocode: ${cleanAddress}`);
+      console.log(`  Retrying with just city name...`);
+      await sleep(1100);
+      coords = await geocode(city);
+    }
+
+    if (!coords) {
+      console.warn(`  Could not geocode: ${city}`);
       continue;
     }
 
