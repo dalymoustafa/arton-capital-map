@@ -25,45 +25,126 @@
   <div id="imi-map"></div>
 </div>
 <script>
-  // No API keys here — offices.json is generated securely by GitHub Actions
-  fetch("offices.json?t=" + Date.now())
-    .then(r => r.json())
-    .then(offices => {
-      const map = L.map("imi-map", { zoomControl: true, attributionControl: false });
+  const OFFICES = [
+  {
+    "city": "Montreal",
+    "address": "1 Westmount Square, Suite 1110, Montreal, Quebec, Canada",
+    "lat": 45.4832,
+    "lng": -73.5975,
+    "hq": true
+  },
+  {
+    "city": "Beijing",
+    "address": "Fortune Financial Center, Level 26, 5 Dong San Huan Zhong Road, Chaoyang District, Beijing, China",
+    "lat": 39.9042,
+    "lng": 116.4074,
+    "hq": false
+  },
+  {
+    "city": "Shanghai",
+    "address": "40th Floor, Bohua Plaza, No. 669 Xinzha Road, Jing'an District, Shanghai, China",
+    "lat": 31.2304,
+    "lng": 121.4737,
+    "hq": false
+  },
+  {
+    "city": "Singapore",
+    "address": "Marina Bay Financial Centre, Tower 2, Level 39, 10 Marina Boulevard, Singapore",
+    "lat": 1.2792,
+    "lng": 103.8531,
+    "hq": false
+  },
+  {
+    "city": "Dubai",
+    "address": "Boulevard Plaza, Tower 1, Level 20, Suite 2004, Burj Khalifa District, Dubai, UAE",
+    "lat": 25.1972,
+    "lng": 55.2744,
+    "hq": false
+  },
+  {
+    "city": "Beirut",
+    "address": "Level 2, Suite 2029, Louis Vuitton Bldg, Beirut Souks, Allenby Street, Beirut, Lebanon",
+    "lat": 33.8988,
+    "lng": 35.5016,
+    "hq": false
+  },
+  {
+    "city": "Sofia",
+    "address": "9 Oborishte Street, Floor 1, Sofia 1000, Bulgaria",
+    "lat": 42.6977,
+    "lng": 23.3219,
+    "hq": false
+  },
+  {
+    "city": "Podgorica",
+    "address": "The Capital Plaza, A50, 81000 Podgorica, Montenegro",
+    "lat": 42.4304,
+    "lng": 19.2594,
+    "hq": false
+  },
+  {
+    "city": "Budapest",
+    "address": "Hajós utca 25, Budapest 1065, Hungary",
+    "lat": 47.5008,
+    "lng": 19.0559,
+    "hq": false
+  },
+  {
+    "city": "Brussels",
+    "address": "2 Place du Luxembourg, 1050 Brussels, Belgium",
+    "lat": 50.8388,
+    "lng": 4.3647,
+    "hq": false
+  },
+  {
+    "city": "Basseterre",
+    "address": "No 2, Richard Caines Bldg, Princes Street, Basseterre, St. Kitts and Nevis",
+    "lat": 17.2948,
+    "lng": -62.7261,
+    "hq": false
+  },
+  {
+    "city": "Roseau",
+    "address": "7 Great George Street, Roseau, Dominica",
+    "lat": 15.3009,
+    "lng": -61.3881,
+    "hq": false
+  },
+  {
+    "city": "Saint john's",
+    "address": "25 Mandolin Place, Friars Hill Road, Saint John's, Antigua and Barbuda",
+    "lat": 17.1274,
+    "lng": -61.8468,
+    "hq": false
+  }
+];
 
-      function makeIcon(isHq) {
-        const fill = isHq ? "#c71e1d" : "#1d81a2";
-        const size = isHq ? 20 : 13;
-        return L.divIcon({
-          className: "",
-          html: `<svg width="${size}" height="${size}" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                   <rect x="2" y="2" width="16" height="16" rx="1" transform="rotate(45 10 10)"
-                     fill="${fill}" fill-opacity="0.85" stroke="rgba(0,0,0,0.5)" stroke-width="1.2"/>
-                 </svg>`,
-          iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -(size/2+4)]
-        });
-      }
-
-      fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
-        .then(r => r.json())
-        .then(geojson => {
-          L.geoJSON(geojson, {
-            style: { fillColor: "#ededed", fillOpacity: 1, color: "#cccccc", weight: 0.5 }
-          }).addTo(map);
-          offices.forEach(o => {
-            L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) }).addTo(map)
-              .bindPopup(`${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}
-                <div class="popup-city">${o.city}</div>
-                <div class="popup-addr">${o.address}</div>`);
-          });
-          map.fitBounds(offices.map(o => [o.lat, o.lng]), { padding: [60, 60], maxZoom: 8 });
-        });
-      map.setView([30, 20], 2);
-    })
-    .catch(() => {
-      document.getElementById("imi-map").innerHTML =
-        '<p style="text-align:center;padding:40px;color:#999;">Map data could not be loaded.</p>';
+  function makeIcon(isHq) {
+    const fill = isHq ? "#c71e1d" : "#1d81a2";
+    const size = isHq ? 20 : 13;
+    return L.divIcon({
+      className: "",
+      html: `<svg width="${size}" height="${size}" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+               <rect x="2" y="2" width="16" height="16" rx="1" transform="rotate(45 10 10)"
+                 fill="${fill}" fill-opacity="0.85" stroke="rgba(0,0,0,0.5)" stroke-width="1.2"/>
+             </svg>`,
+      iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -(size/2+4)]
     });
+  }
+
+  const map = L.map("imi-map", { zoomControl: true, attributionControl: false });
+
+  fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
+    .then(r => r.json())
+    .then(geojson => {
+      L.geoJSON(geojson, { style: { fillColor: "#ededed", fillOpacity: 1, color: "#cccccc", weight: 0.5 } }).addTo(map);
+      OFFICES.forEach(o => {
+        L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) }).addTo(map)
+          .bindPopup(`${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}<div class="popup-city">${o.city}</div><div class="popup-addr">${o.address}</div>`);
+      });
+      map.fitBounds(OFFICES.map(o => [o.lat, o.lng]), { padding: [60, 60], maxZoom: 8 });
+    });
+  map.setView([30, 20], 2);
 </script>
 </body>
 </html>
