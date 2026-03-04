@@ -148,17 +148,16 @@ async function main() {
     });
   }
 
-  // Restrict map to exclude Antarctica and prevent infinite horizontal scroll
-  const southWest = L.latLng(-60, -180);
-  const northEast = L.latLng(85, 180);
-  const bounds = L.latLngBounds(southWest, northEast);
 
   const map = L.map("imi-map", {
-    zoomControl: true,
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    touchZoom: false,
     attributionControl: false,
-    maxBounds: bounds,
-    maxBoundsViscosity: 1.0,
-    minZoom: 1.5
   });
 
   fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
