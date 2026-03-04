@@ -119,6 +119,7 @@ async function main() {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #fff; font-family: 'Libre Baskerville', serif; }
     .imi-map-widget { width: 100%; max-width: 960px; margin: 0 auto; }
+    .map-label { font-family: 'Roboto Condensed', sans-serif; font-size: 12px; color: #888; margin-bottom: 6px; letter-spacing: 0.03em; }
     #imi-map { width: 100%; height: 380px; background: #ffffff; }
     .leaflet-control-attribution { display: none !important; }
     .leaflet-popup-content-wrapper { border-radius: 0 !important; border: 1px solid #e4e4e4 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
@@ -130,6 +131,7 @@ async function main() {
 </head>
 <body>
 <div class="imi-map-widget">
+  <p class="map-label">Headquarters' location in red</p>
   <div id="imi-map"></div>
 </div>
 <script>
@@ -149,15 +151,21 @@ async function main() {
   }
 
 
+  const southWest = L.latLng(-60, -180);
+  const northEast = L.latLng(85, 180);
+  const maxBounds = L.latLngBounds(southWest, northEast);
+
   const map = L.map("imi-map", {
-    zoomControl: false,
+    zoomControl: true,
+    attributionControl: false,
     dragging: false,
     scrollWheelZoom: false,
     doubleClickZoom: false,
     boxZoom: false,
     keyboard: false,
     touchZoom: false,
-    attributionControl: false,
+    maxBounds: maxBounds,
+    maxBoundsViscosity: 1.0
   });
 
   fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
