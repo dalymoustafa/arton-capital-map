@@ -1,3 +1,6 @@
+Fetch offices · JS
+Copy
+
 const https = require("https");
 const fs = require("fs");
 
@@ -72,9 +75,8 @@ async function main() {
 
   console.log("Found Arton Capital! Fields:", JSON.stringify(Object.keys(artonRecord.fields)));
 
-  // Try both possible field names
   const rawLocations = artonRecord.fields["Office Locations"] || artonRecord.fields["Office Location(s)"];
-  
+
   if (!rawLocations) {
     console.error("Could not find office locations field! Available fields:", JSON.stringify(Object.keys(artonRecord.fields)));
     process.exit(1);
@@ -119,7 +121,7 @@ async function main() {
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #fff; font-family: 'Libre Baskerville', serif; }
-    .imi-map-widget { width: 100%; max-width: 960px; margin: 0 auto; border: 1px solid #e4e4e4; overflow: hidden; }
+    .imi-map-widget { width: 100%; max-width: 960px; margin: 0 auto; }
     #imi-map { width: 100%; height: 380px; background: #ffffff; }
     .leaflet-control-attribution { display: none !important; }
     .leaflet-popup-content-wrapper { border-radius: 0 !important; border: 1px solid #e4e4e4 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
@@ -135,6 +137,7 @@ async function main() {
 </div>
 <script>
   const OFFICES = ${JSON.stringify(offices, null, 2)};
+
   function makeIcon(isHq) {
     const fill = isHq ? "#c71e1d" : "#1d81a2";
     const size = isHq ? 20 : 13;
@@ -147,21 +150,46 @@ async function main() {
       iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -(size/2+4)]
     });
   }
-  const map = L.map("imi-map", { zoomControl: true, attributionControl: false });
+
+  // Restrict map to exclude Antarctica and prevent infinite horizontal scroll
+  const southWest = L.latLng(-60, -180);
+  const northEast = L.latLng(85, 180);
+  const bounds = L.latLngBounds(southWest, northEast);
+
+  const map = L.map("imi-map", {
+    zoomControl: true,
+    attributionControl: false,
+    maxBounds: bounds,
+    maxBoundsViscosity: 1.0,
+    minZoom: 1.5
+  });
+
   fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
     .then(r => r.json())
     .then(geojson => {
-      L.geoJSON(geojson, { style: { fillColor: "#ededed", fillOpacity: 1, color: "#cccccc", weight: 0.5 } }).addTo(map);
+      // Filter out Antarctica
+      geojson.features = geojson.features.filter(f => f.properties.name !== "Antarctica");
+
+      L.geoJSON(geojson, {
+        style: { fillColor: "#ededed", fillOpacity: 1, color: "#cccccc", weight: 0.5 }
+      }).addTo(map);
+
       OFFICES.forEach(o => {
-        L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) }).addTo(map)
-          .bindPopup(\`\${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}<div class="popup-city">\${o.city}</div><div class="popup-addr">\${o.address}</div>\`);
+        L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) })
+          .addTo(map)
+          .bindPopup(\`\${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}<div class="popup-city">\${o.city}</div><div class="popup-addr">\${o.address}</div>\`, {
+            autoPanPadding: [20, 20],
+            keepInView: true
+          });
       });
+
       if (OFFICES.length > 0) {
         map.fitBounds(OFFICES.map(o => [o.lat, o.lng]), { padding: [60, 60], maxZoom: 8 });
       } else {
         map.setView([30, 20], 2);
       }
     });
+
   map.setView([30, 20], 2);
 <\/script>
 </body>
