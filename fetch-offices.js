@@ -10,38 +10,38 @@ if (!BASE_ID || !TABLE_ID || !API_KEY) {
   process.exit(1);
 }
 
-// Known coordinates for each city - no geocoding needed, 100% reliable
-const KNOWN_COORDS = {
-  "montreal": { lat: 45.4832, lng: -73.5975 },
-  "beijing": { lat: 39.9042, lng: 116.4074 },
-  "shanghai": { lat: 31.2304, lng: 121.4737 },
-  "singapore": { lat: 1.2792, lng: 103.8531 },
-  "dubai": { lat: 25.1972, lng: 55.2744 },
-  "beirut": { lat: 33.8988, lng: 35.5016 },
-  "sofia": { lat: 42.6977, lng: 23.3219 },
-  "podgorica": { lat: 42.4304, lng: 19.2594 },
-  "budapest": { lat: 47.5008, lng: 19.0559 },
-  "brussels": { lat: 50.8388, lng: 4.3647 },
-  "basseterre": { lat: 17.2948, lng: -62.7261 },
-  "roseau": { lat: 15.3009, lng: -61.3881 },
-  "saint john's": { lat: 17.1274, lng: -61.8468 },
-  "st. john's": { lat: 17.1274, lng: -61.8468 },
-  "antigua": { lat: 17.1274, lng: -61.8468 }
-};
+function geocode(query) {
+  return new Promise((resolve) => {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+    const req = https.get(url, { headers: { "User-Agent": "IMI-OfficeMaps/1.0" } }, (res) => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.length > 0) {
+            resolve({ lat: parseFloat(parsed[0].lat), lng: parseFloat(parsed[0].lon) });
+          } else { resolve(null); }
+        } catch { resolve(null); }
+      });
+    });
+    req.on("error", () => resolve(null));
+  });
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Extract just "City, Country" from a full address — last 2 parts after splitting by comma
+function extractCityCountry(address) {
+  const parts = address.split(",").map(p => p.trim()).filter(Boolean);
+  if (parts.length >= 2) return parts.slice(-2).join(", ");
+  return address;
+}
 
 function extractCity(address) {
   const parts = address.split(",").map(p => p.trim()).filter(Boolean);
   if (parts.length >= 2) return parts[parts.length - 2];
   return parts[0] || "Office";
-}
-
-function getCoordsForAddress(address) {
-  const lower = address.toLowerCase();
-  for (const [city, coords] of Object.entries(KNOWN_COORDS)) {
-    if (lower.includes(city)) return { city: city.charAt(0).toUpperCase() + city.slice(1), ...coords };
-  }
-  // fallback: use extracted city name
-  return null;
 }
 
 async function main() {
@@ -81,24 +81,30 @@ async function main() {
   console.log(`Found ${addresses.length} addresses`);
 
   const offices = [];
+
   for (const rawAddress of addresses) {
     const isHq = rawAddress.toUpperCase().startsWith("HQ");
     const cleanAddress = rawAddress.replace(/^HQ\s*/i, "").trim();
-    const coords = getCoordsForAddress(cleanAddress);
-    const city = coords ? coords.city : extractCity(cleanAddress);
-    const lat = coords ? coords.lat : null;
-    const lng = coords ? coords.lng : null;
-
-    if (!lat) {
-      console.warn(`No coordinates found for: ${cleanAddress}`);
+    const city = extractCity(cleanAddress);
+    
+    // Only send "City, Country" to geocoder — simple and reliable for ANY city in the world
+    const cityCountry = extractCityCountry(cleanAddress);
+    
+    console.log(`Geocoding: ${cityCountry}`);
+    await sleep(1100);
+    
+    const coords = await geocode(cityCountry);
+    
+    if (!coords) {
+      console.warn(`Could not geocode: ${cityCountry}`);
       continue;
     }
 
-    offices.push({ city, address: cleanAddress, lat, lng, hq: isHq });
-    console.log(`✓ ${city}`);
+    offices.push({ city, address: cleanAddress, lat: coords.lat, lng: coords.lng, hq: isHq });
+    console.log(`  ✓ ${city}: ${coords.lat}, ${coords.lng}`);
   }
 
-  // Build the full index.html with offices baked in
+  // Bake everything into index.html
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -127,7 +133,6 @@ async function main() {
 </div>
 <script>
   const OFFICES = ${JSON.stringify(offices, null, 2)};
-
   function makeIcon(isHq) {
     const fill = isHq ? "#c71e1d" : "#1d81a2";
     const size = isHq ? 20 : 13;
@@ -140,9 +145,7 @@ async function main() {
       iconSize: [size, size], iconAnchor: [size/2, size/2], popupAnchor: [0, -(size/2+4)]
     });
   }
-
   const map = L.map("imi-map", { zoomControl: true, attributionControl: false });
-
   fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
     .then(r => r.json())
     .then(geojson => {
@@ -159,7 +162,7 @@ async function main() {
 </html>`;
 
   fs.writeFileSync("index.html", html);
-  console.log(`\nSuccessfully wrote index.html with ${offices.length} offices!`);
+  console.log(`\nDone! Wrote index.html with ${offices.length} offices.`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
