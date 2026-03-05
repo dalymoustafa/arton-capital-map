@@ -119,7 +119,7 @@ async function main() {
     }
 
     offices.push({ city: coords.city, address: cleanAddress, lat: coords.lat, lng: coords.lng, hq: isHq });
-    console.log(`  ✓ ${city}: ${coords.lat}, ${coords.lng}`);
+    console.log(`  ✓ ${coords.city}: ${coords.lat}, ${coords.lng}`);
   }
 
   const html = `<!DOCTYPE html>
