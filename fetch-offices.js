@@ -107,6 +107,7 @@ async function main() {
     const isHq = rawAddress.toUpperCase().startsWith("HQ");
     const cleanAddress = rawAddress.replace(/^HQ\s*/i, "").trim();
     const cityCountry = extractCityCountry(cleanAddress);
+    const city = extractCity(cleanAddress);
 
     console.log(`Geocoding: ${cityCountry}`);
     await sleep(1100);
@@ -118,8 +119,8 @@ async function main() {
       continue;
     }
 
-    offices.push({ city: coords.city, address: cleanAddress, lat: coords.lat, lng: coords.lng, hq: isHq });
-    console.log(`  ✓ ${coords.city}: ${coords.lat}, ${coords.lng}`);
+    offices.push({ city: city, address: cleanAddress, lat: coords.lat, lng: coords.lng, hq: isHq });
+    console.log(`  ✓ ${city}: ${coords.lat}, ${coords.lng}`);
   }
 
   const html = `<!DOCTYPE html>
@@ -142,10 +143,9 @@ async function main() {
     .leaflet-popup-content { margin: 12px 16px !important; }
     .popup-city { font-family: 'Roboto Condensed', sans-serif; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #111; margin-bottom: 4px; }
     .popup-addr { font-family: 'Libre Baskerville', serif; font-size: 11px; color: #777; line-height: 1.5; }
-    .leaflet-popup { max-width: 200px !important; }
-    .leaflet-popup-content-wrapper { max-width: 200px !important; overflow: hidden; }
-    .leaflet-popup-content { max-width: 180px !important; word-wrap: break-word; }
-    .smart-popup .leaflet-popup-content-wrapper { border-radius: 0 !important; border: 1px solid #e4e4e4 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
+    .leaflet-popup { max-width: 160px !important; }
+    .leaflet-popup-content-wrapper { max-width: 160px !important; border-radius: 0 !important; border: 1px solid #e4e4e4 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
+    .leaflet-popup-content { max-width: 140px !important; word-wrap: break-word; margin: 10px 12px !important; }
     .popup-hq { font-family: 'Roboto Condensed', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c71e1d; display: block; margin-bottom: 3px; }
   </style>
 </head>
@@ -197,22 +197,10 @@ async function main() {
         const popupContent = \`\${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}<div class="popup-city">\${o.city}</div><div class="popup-addr">\${o.address}</div>\`;
         
         marker.on('click', function(e) {
-          // Close any open popups first
           map.closePopup();
-          
-          // Get marker position in pixels
-          const mapWidth = map.getContainer().offsetWidth;
-          const point = map.latLngToContainerPoint(e.latlng);
-          
-          // Decide direction: if marker is in right 40% of map, open popup to the left
-          let direction = 'right';
-          if (point.x > mapWidth * 0.6) direction = 'left';
-          
-          const offsetX = direction === 'left' ? -10 : 10;
-          
           L.popup({
             autoPan: false,
-            offset: [offsetX, -8],
+            offset: [0, -8],
             className: 'smart-popup'
           })
           .setLatLng(e.latlng)
