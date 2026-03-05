@@ -12,7 +12,7 @@ if (!BASE_ID || !TABLE_ID || !API_KEY) {
 
 function geocode(query) {
   return new Promise((resolve) => {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1&accept-language=en`;
     const req = https.get(url, { headers: { "User-Agent": "IMI-OfficeMaps/1.0" } }, (res) => {
       let data = "";
       res.on("data", chunk => data += chunk);
