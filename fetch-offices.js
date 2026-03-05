@@ -12,7 +12,7 @@ if (!BASE_ID || !TABLE_ID || !API_KEY) {
 
 function geocode(query) {
   return new Promise((resolve) => {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&addressdetails=1`;
     const req = https.get(url, { headers: { "User-Agent": "IMI-OfficeMaps/1.0" } }, (res) => {
       let data = "";
       res.on("data", chunk => data += chunk);
@@ -20,7 +20,11 @@ function geocode(query) {
         try {
           const parsed = JSON.parse(data);
           if (parsed.length > 0) {
-            resolve({ lat: parseFloat(parsed[0].lat), lng: parseFloat(parsed[0].lon) });
+            const r = parsed[0];
+            const a = r.address || {};
+            // Get the best city name from address details
+            const city = a.city || a.town || a.village || a.county || a.state || a.country || query.split(",")[0].trim();
+            resolve({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), city });
           } else { resolve(null); }
         } catch { resolve(null); }
       });
@@ -102,7 +106,6 @@ async function main() {
   for (const rawAddress of addresses) {
     const isHq = rawAddress.toUpperCase().startsWith("HQ");
     const cleanAddress = rawAddress.replace(/^HQ\s*/i, "").trim();
-    const city = extractCity(cleanAddress);
     const cityCountry = extractCityCountry(cleanAddress);
 
     console.log(`Geocoding: ${cityCountry}`);
@@ -115,7 +118,7 @@ async function main() {
       continue;
     }
 
-    offices.push({ city, address: cleanAddress, lat: coords.lat, lng: coords.lng, hq: isHq });
+    offices.push({ city: coords.city, address: cleanAddress, lat: coords.lat, lng: coords.lng, hq: isHq });
     console.log(`  ✓ ${city}: ${coords.lat}, ${coords.lng}`);
   }
 
