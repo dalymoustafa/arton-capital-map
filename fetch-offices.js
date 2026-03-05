@@ -151,21 +151,15 @@ async function main() {
   }
 
 
-  const southWest = L.latLng(-60, -180);
-  const northEast = L.latLng(85, 180);
-  const maxBounds = L.latLngBounds(southWest, northEast);
-
   const map = L.map("imi-map", {
-    zoomControl: true,
+    zoomControl: false,
     attributionControl: false,
     dragging: false,
     scrollWheelZoom: false,
     doubleClickZoom: false,
     boxZoom: false,
     keyboard: false,
-    touchZoom: false,
-    maxBounds: maxBounds,
-    maxBoundsViscosity: 1.0
+    touchZoom: false
   });
 
   fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
