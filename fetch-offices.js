@@ -39,7 +39,12 @@ function extractCityCountry(address) {
 
 function extractCity(address) {
   const parts = address.split(",").map(p => p.trim()).filter(Boolean);
-  if (parts.length >= 2) return parts[parts.length - 2];
+  // Find the last part that is not purely a number or postcode
+  for (let i = parts.length - 2; i >= 0; i--) {
+    if (!/^\d+$/.test(parts[i]) && !/^\d{4,6}\s+\w/.test(parts[i])) {
+      return parts[i];
+    }
+  }
   return parts[0] || "Office";
 }
 
