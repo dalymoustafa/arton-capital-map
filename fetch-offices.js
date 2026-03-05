@@ -126,6 +126,10 @@ async function main() {
     .leaflet-popup-content { margin: 12px 16px !important; }
     .popup-city { font-family: 'Roboto Condensed', sans-serif; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #111; margin-bottom: 4px; }
     .popup-addr { font-family: 'Libre Baskerville', serif; font-size: 11px; color: #777; line-height: 1.5; }
+    .leaflet-popup { max-width: 200px !important; }
+    .leaflet-popup-content-wrapper { max-width: 200px !important; overflow: hidden; }
+    .leaflet-popup-content { max-width: 180px !important; word-wrap: break-word; }
+    .smart-popup .leaflet-popup-content-wrapper { border-radius: 0 !important; border: 1px solid #e4e4e4 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
     .popup-hq { font-family: 'Roboto Condensed', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c71e1d; display: block; margin-bottom: 3px; }
   </style>
 </head>
@@ -173,11 +177,32 @@ async function main() {
       }).addTo(map);
 
       OFFICES.forEach(o => {
-        L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) })
-          .addTo(map)
-          .bindPopup(\`\${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}<div class="popup-city">\${o.city}</div><div class="popup-addr">\${o.address}</div>\`, {
-            autoPan: false
-          });
+        const marker = L.marker([o.lat, o.lng], { icon: makeIcon(o.hq) }).addTo(map);
+        const popupContent = \`\${o.hq ? '<span class="popup-hq">Headquarters</span>' : ''}<div class="popup-city">\${o.city}</div><div class="popup-addr">\${o.address}</div>\`;
+        
+        marker.on('click', function(e) {
+          // Close any open popups first
+          map.closePopup();
+          
+          // Get marker position in pixels
+          const mapWidth = map.getContainer().offsetWidth;
+          const point = map.latLngToContainerPoint(e.latlng);
+          
+          // Decide direction: if marker is in right 40% of map, open popup to the left
+          let direction = 'right';
+          if (point.x > mapWidth * 0.6) direction = 'left';
+          
+          const offsetX = direction === 'left' ? -10 : 10;
+          
+          L.popup({
+            autoPan: false,
+            offset: [offsetX, -8],
+            className: 'smart-popup'
+          })
+          .setLatLng(e.latlng)
+          .setContent(popupContent)
+          .openOn(map);
+        });
       });
 
       if (OFFICES.length > 0) {
