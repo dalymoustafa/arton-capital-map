@@ -39,12 +39,20 @@ function extractCityCountry(address) {
 
 function extractCity(address) {
   const parts = address.split(",").map(p => p.trim()).filter(Boolean);
-  // Find the last part that is not purely a number or postcode
+  // Work backwards from second-to-last, skip anything that looks like a street or postcode
   for (let i = parts.length - 2; i >= 0; i--) {
-    if (!/^\d+$/.test(parts[i]) && !/^\d{4,6}\s+\w/.test(parts[i])) {
-      return parts[i];
-    }
+    const part = parts[i];
+    // Skip purely numeric
+    if (/^\d+$/.test(part)) continue;
+    // Skip if it starts with a number (street address like "10 Marina Boulevard")
+    if (/^\d/.test(part)) continue;
+    // Skip if it contains common street words
+    if (/\b(street|road|avenue|boulevard|floor|level|suite|tower|plaza|bldg|place|utca|str\.)\b/i.test(part)) continue;
+    // Remove trailing postcode numbers
+    const cleaned = part.replace(/\s+\d+$/, '').trim();
+    if (cleaned.length > 0) return cleaned;
   }
+  // Last resort: use the last part (country) minus country = use first part
   return parts[0] || "Office";
 }
 
